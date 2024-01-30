@@ -31,22 +31,22 @@ sleep(5)
 
 search_place()
 
-sleep(3)
+sleep(2)
 
-scroll = driver.find_element(By.CSS_SELECTOR,"Nv2PK THOPZb CpccDe")
+scroll = driver.find_element(By.CSS_SELECTOR,".Nv2PK")
 
 try:
     scroll.execute_script("window.scrollTo(0,document.body.scrollHeight)")
 except:
     pass
 
-sleep(20)
+sleep(3)
 
-links = driver.find_elemen(By.CSS_SELECTOR,"Nv2PK THOPZb CpccDe") 
+links = driver.find_elements(By.CSS_SELECTOR,".Nv2PK") 
 
 for link in links:
     sleep(2)
-    text = link.find_elemen(By.CSS_SELECTOR,"hfpxzc")
+    text = link.find_element(By.CSS_SELECTOR,".hfpxzc")
     text_link = text.get_attribute("href")
     dados_titles.append(text_link)
 
@@ -64,8 +64,13 @@ for dado in lista:
     driver.get(dado)
     sleep(3)
 
-    for attribute in driver.find_element(By.CSS_SELECTOR,"WNBkOb"):
-        text = driver.find_element(By.XPATH, "/html/body/div[2]/div[3]/div[8]/div[9]/div/div/div[1]/div[2]/div/div[1]/div/div/div[2]/div/div[1]/div[1]/h1").text
+    for attribute in driver.find_elements(By.CSS_SELECTOR,".WNBkOb"):
+        
+        try:
+            text = driver.find_element(By.XPATH, "/html/body/div[2]/div[3]/div[8]/div[9]/div/div/div[1]/div[2]/div/div[1]/div/div/div[2]/div/div[1]/div[1]/h1/span[1]").text
+        except:
+            text = None
+
         try:
             review = driver.find_element(By.XPATH, "/html/body/div[2]/div[3]/div[8]/div[9]/div/div/div[1]/div[2]/div/div[1]/div/div/div[2]/div/div[1]/div[2]/div/div[1]/div[2]/span[1]/span[1]").text
         except:
@@ -77,21 +82,22 @@ for dado in lista:
             count_review = None
         
         try:
-            phone = driver.find_element(By.CLASS_NAME, "rogA2c").text
+            phone = driver.find_element(By.XPATH, "/html/body/div[2]/div[3]/div[8]/div[9]/div/div/div[1]/div[2]/div/div[1]/div/div/div[9]/div[6]/button/div/div[2]/div[1]").text
         except:
             phone = None
         
         try:
-            website = driver.find_element(By.PARTIAL_LINK_TEXT, ".com").text
+            website = driver.find_element(By.CSS_SELECTOR, ".rllt__link")
+            website_link = website.get_attribute("href")
         except:
-            website = None
+            website_link = None
         
         dados_final = {
             "Nome": text,
-            "Avaliação": review,
-            "Qauantidade de avaliações": count_review,
-            "Número": phone,
-            "Site": website
+            "Avaliacao": review,
+            "Qauantidade de avaliacoes": count_review,
+            "Numero": phone,
+            "Site": website_link
         }
         dados.append(dados_final)
         linhas_coletadas += 1
@@ -103,4 +109,9 @@ df = pd.DataFrame(dados)
 df.drop_duplicates(inplace=True)
 df.to_csv('leads_googleMaps.csv', index=False)
 
-print(df.head())
+# Move o arquivo para um local específico, se necessário
+# Você pode personalizar o caminho conforme necessário
+import shutil
+shutil.move('leads_googleMaps.csv', 'C:/Users/Lucas/OneDrive/Documentos/Estudos Lucas/WebScraping/leads_googleMaps.csv')
+
+print(f'O arquivo "leads_googleMaps.csv" foi salvo com sucesso!')
