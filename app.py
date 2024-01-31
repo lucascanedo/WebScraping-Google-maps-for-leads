@@ -27,7 +27,7 @@ def search_place():
     submit.click()
 
 # Adicionando um tempo de espera para que a página tenha tempo de carregar completamente
-sleep(5)
+sleep(2)
 
 search_place()
 
@@ -52,7 +52,7 @@ for link in links:
 
 lista = remove_dup(dados_titles)
 
-sleep(5)
+sleep(3)
 
 dados = []
 linhas_coletadas = 0
@@ -66,10 +66,7 @@ for dado in lista:
 
     for attribute in driver.find_elements(By.CSS_SELECTOR,".WNBkOb"):
         
-        try:
-            text = driver.find_element(By.XPATH, "/html/body/div[2]/div[3]/div[8]/div[9]/div/div/div[1]/div[2]/div/div[1]/div/div/div[2]/div/div[1]/div[1]/h1/span[1]").text
-        except:
-            text = None
+        text = driver.find_elements(By.XPATH,"/html/body/div[2]/div[3]/div[8]/div[9]/div/div/div[1]/div[2]/div/div[1]/div/div/div[2]/div/div[1]/div[1]/h1")
 
         try:
             review = driver.find_element(By.XPATH, "/html/body/div[2]/div[3]/div[8]/div[9]/div/div/div[1]/div[2]/div/div[1]/div/div/div[2]/div/div[1]/div[2]/div/div[1]/div[2]/span[1]/span[1]").text
@@ -87,7 +84,7 @@ for dado in lista:
             phone = None
         
         try:
-            website = driver.find_element(By.CSS_SELECTOR, ".rllt__link")
+            website = driver.find_element(By.CSS_SELECTOR, ".OyjIsf ")
             website_link = website.get_attribute("href")
         except:
             website_link = None
