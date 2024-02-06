@@ -1,114 +1,115 @@
 from selenium import webdriver
-from selenium.webdriver.common.keys import Keys
-from webdriver_manager.chrome import ChromeDriverManager
-from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.common.by import By
-from time import sleep
+from selenium.webdriver.common.keys import Keys
+from bs4 import BeautifulSoup
+import time
 import pandas as pd
 
 
-search = input("O que desejas encontar: ")
-num_linhas_desejado = int(input("Quantidade de linhas desejadas: "))
+Loja = input("Escreva o nome do estabelecimento: ")
+Numero_Lojas = int(input("Escreva a quantidade de lojas pesquisadas: "))
 
-driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()))
-driver.get("https://www.google.com.br/maps")
+driver = webdriver.Firefox()
 
-dados_titles = []
+driver.get('https://www.google.com.br/maps')
+time.sleep(4)
 
-def remove_dup(lista):
-    lista = set(lista)
-    return lista
+select = driver.find_element(By.XPATH,'//*[@id="searchboxinput"]')  # Colocando o acesso de login
+select.send_keys(Loja)
+time.sleep(1)
 
-def search_place():
-    # Utilizando By.CLASS_NAME para encontrar o elemento pela classe
-    place = driver.find_element(By.CLASS_NAME, "searchboxinput")
-    place.send_keys(search)
-    submit = driver.find_element(By.XPATH, "/html/body/div[1]/div[3]/div[8]/div[3]/div[1]/div[1]/div/div[2]/div[1]/button/span")
-    submit.click()
+select = driver.find_element(By.XPATH,'//*[@id="searchbox-searchbutton"]').click();
+time.sleep(4)
 
-# Adicionando um tempo de espera para que a página tenha tempo de carregar completamente
-sleep(2)
+soup = BeautifulSoup(driver.page_source, 'lxml')
 
-search_place()
+lista = []
 
-sleep(2)
+for i in range(2,len(str(soup).split('hfpxzc')) -1):
+    lista.append(str(soup).split('hfpxzc')[i].split('href="')[1].split('" ')[0])
 
-scroll = driver.find_element(By.CSS_SELECTOR,".Nv2PK")
+################################ Pegando os Post's
 
-try:
-    scroll.execute_script("window.scrollTo(0,document.body.scrollHeight)")
-except:
-    pass
+driver = webdriver.Firefox()
 
-sleep(3)
+nome_unidade = []
+nota = []
+loja = []
+avaliacoes = []
+localizacao = []
+site = []
+telefone = []
+    
+for i in range(0,len(lista[:Numero_Lojas])):
+    
+    driver.get(lista[i])
+    time.sleep(4)
 
-links = driver.find_elements(By.CSS_SELECTOR,".Nv2PK") 
+    # Pegando a flag presente nos posts 
 
-for link in links:
-    sleep(2)
-    text = link.find_element(By.CSS_SELECTOR,".hfpxzc")
-    text_link = text.get_attribute("href")
-    dados_titles.append(text_link)
+    soup = BeautifulSoup(driver.page_source, 'lxml')
+    
+    # Alocando o conteudo em memória por meio de lista para otimizar 
 
-lista = remove_dup(dados_titles)
-
-sleep(3)
-
-dados = []
-linhas_coletadas = 0
-
-
-for dado in lista:
-    if linhas_coletadas >= num_linhas_desejado:
-        break  # Sai do loop se atingir o número desejado de linhas
-    driver.get(dado)
-    sleep(3)
-
-    for attribute in driver.find_elements(By.CSS_SELECTOR,".WNBkOb"):
+    try:
+        nome_unidade.append(str(soup).split('<title>')[1].split('</title>')[0])
+    except:
+        nome_unidade.append(' ')
+           
+    try:
+        nota.append(str(soup).split('class="F7nice"')[1].split('</span>')[0].rsplit('>')[-1])
+    except:
+        nota.append(' ')
+            
+    try:
+        loja.append(str(soup).split('class="DkEaL"')[1].split('</button>')[0].rsplit('>')[-1])
+    except:
+        loja.append(' ')
         
-        text = driver.find_elements(By.XPATH,"/html/body/div[2]/div[3]/div[8]/div[9]/div/div/div[1]/div[2]/div/div[1]/div/div/div[2]/div/div[1]/div[1]/h1")
+        
+    try:
+        avaliacoes.append(str(soup).split('class="rFrJzc UpDOYb"></span></span>')[1].split(' avaliações')[0].split('label="')[1])
+    except:
+        avaliacoes.append(' ')
 
+    try:
+        localizacao.append(str(soup).split('Io6YTe fontBodyMedium kR99db')[1].split('</div>')[0].split('">')[1])
+    except:
+        localizacao.append(' ')
+        
+    # Verificando o site
+    site_value = 'No Link'
+    for index in range(2, 8):
         try:
-            review = driver.find_element(By.XPATH, "/html/body/div[2]/div[3]/div[8]/div[9]/div/div/div[1]/div[2]/div/div[1]/div/div/div[2]/div/div[1]/div[2]/div/div[1]/div[2]/span[1]/span[1]").text
+            site_value = str(soup).split('Io6YTe fontBodyMedium kR99db')[index].split('</div>')[0].split('">')[1]
+            if ".com" in site_value:
+                break  # Interrompe o loop se encontrar um link válido
         except:
-            review = None
-        
+            pass
+    site.append(site_value if ".com" in site_value else 'No Link')
+
+    # Verificando o telefone
+    telefone_value = 'No Phone'
+    for index in range(2, 7):
         try:
-            count_review = driver.find_element(By.XPATH, "/html/body/div[2]/div[3]/div[8]/div[9]/div/div/div[1]/div[2]/div/div[1]/div/div/div[2]/div/div[1]/div[2]/div/div[1]/div[2]/span[2]/span/span").text
-        except:
-            count_review = None
+            telefone_value = str(soup).split('Io6YTe fontBodyMedium kR99db')[index].split('</div>')[0].split('">')[1]
+            if any(char.isdigit() for char in telefone_value):
+                break  # Interrompe o loop se encontrar um número de telefone válido
+        except Exception as e:
+                print(e)
+    telefone.append(telefone_value)
         
-        try:
-            phone = driver.find_element(By.XPATH, "/html/body/div[2]/div[3]/div[8]/div[9]/div/div/div[1]/div[2]/div/div[1]/div/div/div[9]/div[6]/button/div/div[2]/div[1]").text
-        except:
-            phone = None
-        
-        try:
-            website = driver.find_element(By.CSS_SELECTOR, ".OyjIsf ")
-            website_link = website.get_attribute("href")
-        except:
-            website_link = None
-        
-        dados_final = {
-            "Nome": text,
-            "Avaliacao": review,
-            "Qauantidade de avaliacoes": count_review,
-            "Numero": phone,
-            "Site": website_link
-        }
-        dados.append(dados_final)
-        linhas_coletadas += 1
+driver.quit()
 
-driver.close()
+# Estruturando um Dataframe
 
+df = pd.DataFrame (lista ,columns=['Url'])
+df['nome_unidade'] = nome_unidade
+df['nota'] = nota
+df['loja'] = loja
+df['avaliacoes'] = avaliacoes
+df['localizacao'] = localizacao
+df['site'] = site
+df['telefone'] = telefone
 
-df = pd.DataFrame(dados)
-df.drop_duplicates(inplace=True)
-df.to_csv('leads_googleMaps.csv', index=False)
-
-# Move o arquivo para um local específico, se necessário
-# Você pode personalizar o caminho conforme necessário
-import shutil
-shutil.move('leads_googleMaps.csv', 'C:/Users/Lucas/OneDrive/Documentos/Estudos Lucas/WebScraping/leads_googleMaps.csv')
-
-print(f'O arquivo "leads_googleMaps.csv" foi salvo com sucesso!')
+print(df)
