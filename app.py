@@ -13,27 +13,34 @@ Numero_Lojas = int(input("Escreva a quantidade de lojas pesquisadas: "))
 driver = webdriver.Firefox()
 
 driver.get('https://www.google.com.br/maps')
-time.sleep(4)
+time.sleep(10)
 
 select = driver.find_element(By.XPATH,'//*[@id="searchboxinput"]')  # Colocando o acesso de login
 select.send_keys(Loja)
-time.sleep(1)
+time.sleep(5)
 
 select = driver.find_element(By.XPATH,'//*[@id="searchbox-searchbutton"]').click();
-time.sleep(4)
+time.sleep(5)
 
 soup = BeautifulSoup(driver.page_source, 'lxml')
 
-lista = []
 
 # Encontrando os links dos estabelecimentos
 
-for tag in soup.find_all("a", href=True):
-    if "/place/" in tag['href']:
-        lista.append(tag['href'])
-        if len(lista) == Numero_Lojas:
-            break
-    
+urls_set = set()
+
+while len(urls_set) <= Numero_Lojas:
+    soup = BeautifulSoup(driver.page_source, 'html.parser')
+    for tag in soup.find_all("a", href=True):
+        if "/place/" in tag['href']:
+            urls_set.add(tag['href'])
+            # Rolar a tela
+            driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
+            if len(urls_set) <= Numero_Lojas:
+                break
+
+lista = list(urls_set)
+print(len(lista))   
 
 ################################ Pegando os Post's
 
@@ -44,10 +51,9 @@ avaliacoes = []
 site = []
 telefone = []
 
-for i, url in enumerate(lista):
-
+for url in lista:
     driver.get(url)
-    time.sleep(6)
+    time.sleep(8)
 
     # Pegando a flag presente nos posts
 
