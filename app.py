@@ -1,81 +1,25 @@
-from lxml import html
-import re
 from selenium import webdriver
 from selenium.webdriver.common.by import By
-from selenium.webdriver.common.keys import Keys
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
 from bs4 import BeautifulSoup
-import time
 import pandas as pd
+import time
+import re
 
-Loja = str(input("Escreva o nome do estabelecimento: "))
-Numero_Lojas = int(input("Escreva a quantidade de lojas pesquisadas: "))
-
-driver = webdriver.Firefox()
-
-driver.get('https://www.google.com.br/maps')
-time.sleep(10)
-
-select = driver.find_element(By.XPATH,'//*[@id="searchboxinput"]')  # Colocando o acesso de login
-select.send_keys(Loja)
-time.sleep(5)
-
-select = driver.find_element(By.XPATH,'//*[@id="searchbox-searchbutton"]').click();
-time.sleep(5)
-
-soup = BeautifulSoup(driver.page_source, 'lxml')
-
-
-# Encontrando os links dos estabelecimentos
-
-urls_set = set()
-
-while len(urls_set) <= Numero_Lojas:
-    soup = BeautifulSoup(driver.page_source, 'html.parser')
-    for tag in soup.find_all("a", href=True):
-        if "/place/" in tag['href']:
-            urls_set.add(tag['href'])
-            # Rolar a tela
-            driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
-            if len(urls_set) <= Numero_Lojas:
-                break
-
-lista = list(urls_set)
-print(len(lista))   
-
-################################ Pegando os Post's
-
-Nome = []
-nota = []
-#loja = []
-avaliacoes = []
-site = []
-telefone = []
-
-for url in lista:
+# Função para obter informações da loja
+def get_store_info(url):
     driver.get(url)
-    time.sleep(8)
-
-    # Pegando a flag presente nos posts
+    #WebDriverWait(driver, 10).until(EC.presence_of_element_located((By.CLASS_NAME, 'section-hero-header-title')))
 
     soup = BeautifulSoup(driver.page_source, 'lxml')
 
-    # Alocando o conteudo em memória por meio de lista para otimizar
-
-    # Pegando o título do estabelecimento
+    # Pegando o nome da loja
     Nome_loja = soup.find("h1", class_="DUwDvf lfPIob").text if soup.find("h1", class_="DUwDvf lfPIob") else ' '
-    Nome.append(Nome_loja)
-
-    # Pegando a nota do estabelecimento
+    # Pegando a nota da loja
     nota_valor = soup.find("span", class_="MW4etd").text if soup.find("span", class_="MW4etd") else ' '
-    nota.append(nota_valor)
-
-    # Pegando o nome do estabelecimentoF
-    #loja_tipo = soup.find("button", class_="DkEaL ").text if soup.find("button", class_="DkEaL ") else ' '
-    #loja.append(loja_tipo)
-
-    # Pegando as avaliações
+    # Pegando as avaliações da loja
     avaliacoes_valor = soup.find("span", class_="UY7F9").text if soup.find("span", class_="UY7F9") else ' '
-    avaliacoes.append(avaliacoes_valor)
 
     # Verificando o site
     site_value = 'No Link'
@@ -84,8 +28,6 @@ for url in lista:
         if aria_label and 'Website:' in aria_label:
             site_value = tag['href']
             break
-    site.append(site_value)
-
 
     # Verificando o telefone
     telefone_value = 'No Phone'
@@ -94,25 +36,45 @@ for url in lista:
         if telefone_match:
             telefone_value = telefone_match.group()
             break
-    telefone.append(telefone_value)
 
+    return [url, Nome_loja, nota_valor, avaliacoes_valor, site_value, telefone_value]
 
+# Solicitando informações ao usuário
+Loja = str(input("Escreva o nome do estabelecimento: "))
+Numero_Lojas = int(input("Escreva a quantidade de lojas pesquisadas: "))
+
+# Iniciando o webdriver
+driver = webdriver.Firefox()
+driver.get('https://www.google.com.br/maps')
+
+# Pesquisando a loja
+search_box = WebDriverWait(driver, 10).until(EC.presence_of_element_located((By.ID, 'searchboxinput')))
+search_box.send_keys(Loja)
+time.sleep(2)  # Aguardando um pouco antes de submeter a pesquisa
+select = driver.find_element(By.XPATH,'//*[@id="searchbox-searchbutton"]').click();
+
+# Coletando os URLs das lojas
+urls_set = set()
+while len(urls_set) < Numero_Lojas:
+    soup = BeautifulSoup(driver.page_source, 'html.parser')
+    for tag in soup.find_all("a", href=True):
+        if "/place/" in tag['href']:
+            urls_set.add(tag['href'])
+            if len(urls_set) >= Numero_Lojas:
+                break
+    driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
+
+print(len(urls_set))
+# Coletando as informações das lojas
+data = []
+for url in list(urls_set):
+    data.append(get_store_info(url))
+
+# Fechando o webdriver
 driver.quit()
 
-# Estruturando um Dataframe
-
-df = pd.DataFrame(lista, columns=['Url'])
-df['Nome_loja'] = Nome
-df['nota'] = nota
-#df['loja_tipo'] = loja
-df['avaliacoes'] = avaliacoes
-df['site'] = site
-df['telefone'] = telefone
+# Criando o DataFrame
+df = pd.DataFrame(data, columns=['Url', 'Nome_loja', 'nota', 'avaliacoes', 'site', 'telefone'])
 
 print(df)
 df.info()
-# Salvando o DataFrame em um arquivo CSV
-#df.to_csv('dados_estabelecimentos.csv', index=False)
-
-#print("Os dados foram salvos em dados_estabelecimentos.csv")
-
