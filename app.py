@@ -16,10 +16,14 @@ def get_store_info(url):
 
     # Pegando o nome da loja
     Nome_loja = soup.find("h1", class_="DUwDvf lfPIob").text if soup.find("h1", class_="DUwDvf lfPIob") else ' '
-    # Pegando a nota da loja
-    nota_valor = soup.find("span", class_="MW4etd").text if soup.find("span", class_="MW4etd") else ' '
+
+   # Pegando a nota da loja
+    nota_element = driver.find_element(By.CSS_SELECTOR, '.F7nice > span:nth-child(1) > span:nth-child(1)')
+    nota_valor = nota_element.text.strip() if nota_element else ' '
+
     # Pegando as avaliações da loja
-    avaliacoes_valor = soup.find("span", class_="UY7F9").text if soup.find("span", class_="UY7F9") else ' '
+    avaliacoes_element = driver.find_element(By.XPATH, '//span[contains(@aria-label, "avaliações")]')
+    avaliacoes_valor = avaliacoes_element.text.strip() if avaliacoes_element else ' '
 
     # Verificando o site
     site_value = 'No Link'
@@ -55,16 +59,23 @@ select = driver.find_element(By.XPATH,'//*[@id="searchbox-searchbutton"]').click
 
 # Coletando os URLs das lojas
 urls_set = set()
+time.sleep(2)
+
+scrollable_div = driver.find_element(By.CSS_SELECTOR, 'div[role="feed"]')  #Encontrado a parte onde deve acontecer o scrol dentro da pagina do maps
 while len(urls_set) < Numero_Lojas:
     soup = BeautifulSoup(driver.page_source, 'html.parser')
-    for tag in soup.find_all("a", href=True):
+    for tag in soup.find_all("a", class_="hfpxzc", href=True):
         if "/place/" in tag['href']:
             urls_set.add(tag['href'])
             if len(urls_set) >= Numero_Lojas:
                 break
-    driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
+
+    # Rolando a página na região role="feed" para carregar mais lojas
+    driver.execute_script("arguments[0].scrollBy(0, 200);", scrollable_div)
+    time.sleep(2)
 
 print(len(urls_set))
+
 # Coletando as informações das lojas
 data = []
 for url in list(urls_set):
