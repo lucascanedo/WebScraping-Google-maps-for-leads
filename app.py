@@ -2,6 +2,7 @@ from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
+from selenium.common.exceptions import NoSuchElementException
 from bs4 import BeautifulSoup
 import pandas as pd
 import time
@@ -14,16 +15,27 @@ def get_store_info(url):
 
     soup = BeautifulSoup(driver.page_source, 'lxml')
 
-    # Pegando o nome da loja
-    Nome_loja = soup.find("h1", class_="DUwDvf lfPIob").text if soup.find("h1", class_="DUwDvf lfPIob") else ' '
+    try:
+        # Pegando o nome da loja
+        Nome_loja = soup.find("h1", class_="DUwDvf lfPIob").text.strip()
+    except AttributeError:
+        Nome_loja = 'Nome não encontrado'
 
-   # Pegando a nota da loja
-    nota_element = driver.find_element(By.CSS_SELECTOR, '.F7nice > span:nth-child(1) > span:nth-child(1)')
-    nota_valor = nota_element.text.strip() if nota_element else ' '
+    try:
+        # Pegando a nota da loja
+        nota_element = driver.find_element(By.CSS_SELECTOR, '.F7nice > span:nth-child(1) > span:nth-child(1)')
+        nota_valor = nota_element.text.strip()
+        nota_numero = float(nota_valor.replace(',', '.'))
+    except (NoSuchElementException, ValueError):
+        nota_numero = None
 
-    # Pegando as avaliações da loja
-    avaliacoes_element = driver.find_element(By.XPATH, '//span[contains(@aria-label, "avaliações")]')
-    avaliacoes_valor = avaliacoes_element.text.strip() if avaliacoes_element else ' '
+    try:
+        # Pegando as avaliações da loja
+        avaliacoes_element = driver.find_element(By.XPATH, '//span[contains(@aria-label, "avaliações")]')
+        avaliacoes_valor = avaliacoes_element.text.strip()
+        avaliacoes_valor = int(avaliacoes_valor.replace('(', '').replace(')', ''))
+    except (NoSuchElementException, ValueError):
+        avaliacoes_valor = None
 
     # Verificando o site
     site_value = 'No Link'
@@ -41,11 +53,12 @@ def get_store_info(url):
             telefone_value = telefone_match.group()
             break
 
-    return [url, Nome_loja, nota_valor, avaliacoes_valor, site_value, telefone_value]
+    return [url, Nome_loja, nota_numero, avaliacoes_valor, site_value, telefone_value]
+
 
 # Solicitando informações ao usuário
-Loja = str(input("Escreva o nome do estabelecimento: "))
-Numero_Lojas = int(input("Escreva a quantidade de lojas pesquisadas: "))
+Pesquisa = str(input("O que deseas pesquisar? "))
+qtdPesquisa = int(input("Coloque a quantidade a ser pesquisado: "))
 
 # Iniciando o webdriver
 driver = webdriver.Firefox()
@@ -53,7 +66,7 @@ driver.get('https://www.google.com.br/maps')
 
 # Pesquisando a loja
 search_box = WebDriverWait(driver, 10).until(EC.presence_of_element_located((By.ID, 'searchboxinput')))
-search_box.send_keys(Loja)
+search_box.send_keys(Pesquisa)
 time.sleep(2)  # Aguardando um pouco antes de submeter a pesquisa
 select = driver.find_element(By.XPATH,'//*[@id="searchbox-searchbutton"]').click();
 
@@ -62,12 +75,12 @@ urls_set = set()
 time.sleep(2)
 
 scrollable_div = driver.find_element(By.CSS_SELECTOR, 'div[role="feed"]')  #Encontrado a parte onde deve acontecer o scrol dentro da pagina do maps
-while len(urls_set) < Numero_Lojas:
+while len(urls_set) < qtdPesquisa:
     soup = BeautifulSoup(driver.page_source, 'html.parser')
     for tag in soup.find_all("a", class_="hfpxzc", href=True):
         if "/place/" in tag['href']:
             urls_set.add(tag['href'])
-            if len(urls_set) >= Numero_Lojas:
+            if len(urls_set) >= qtdPesquisa:
                 break
 
     # Rolando a página na região role="feed" para carregar mais lojas
@@ -85,7 +98,13 @@ for url in list(urls_set):
 driver.quit()
 
 # Criando o DataFrame
-df = pd.DataFrame(data, columns=['Url', 'Nome_loja', 'nota', 'avaliacoes', 'site', 'telefone'])
+df = pd.DataFrame(data, columns=['Url', 'Nome', 'nota', 'avaliacoes', 'site', 'telefone'])
+
+# Exportando o DataFrame para um arquivo Excel
+excel_file = 'leads.xlsx'  # Nome do arquivo Excel
+df.to_excel(excel_file, index=False)
+
+print("Dados exportados para:", excel_file)
 
 print(df)
 df.info()
